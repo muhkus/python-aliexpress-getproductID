@@ -1,0 +1,106 @@
+from bs4 import BeautifulSoup
+import requests
+import json
+import re
+import random
+from slimit import ast
+from slimit.parser import Parser
+from slimit.visitors import nodevisitor
+
+# Function to clean string where makes broken json
+def clean_string(string): 
+    new_string  = re.sub(r'[?|$|"|!]',r'',string) #for remove particular special char
+    return new_string
+ 
+# Function to extract URL
+def get_url(soup):
+     
+    try:
+       #get pattern
+       pattern = re.compile(r'window.runParams = .*?,')
+       url = soup.find("script",text=pattern)
+       url = str(url)
+
+
+       #compile regex
+       regex =  re.compile('"productId":.*?,') 
+       url  = re.findall(regex, url ) 
+       
+       #  find first item @ new line to : and 2nd item @ from : to the end of the line or , 
+       url  = [jt.strip() for jt in url]
+       url  = str(url).replace('[','').replace(']','')
+       url  = re.sub(r'"productId":', "https://www.aliexpress.com/item/", url)
+       url  = re.sub(r"'", "", url)
+       url  = re.sub(r",,", ".html", url)
+       url  = re.sub(r",", ".html", url)
+       url  = re.sub(r" ", "\n", url)
+       url  = clean_string(url)
+
+
+    except AttributeError:
+        url = ""  
+ 
+    return url
+ 
+# Function to extract Product Price
+
+    
+def write_file(data):
+    """
+    this function write data to file
+    :param data:
+    :return:
+    """
+    file_name = r'urls.txt'
+    raw = open(file_name, 'a+',encoding='utf-8') 
+    contents = raw.read().split("\n")
+    raw.seek(0)                        # <- This is the missing piece
+    raw.truncate()
+    raw.write(data) 
+    
+  
+def random_user_agent():
+    user_agent_list = [
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:77.0) Gecko/20100101 Firefox/77.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',
+    ]
+
+    #Pick a random user agent
+    user_agent = random.choice(user_agent_list)
+    return str(user_agent)    
+
+
+
+if __name__ == '__main__':
+ 
+    komma = '",'
+    newstring = ''
+    with open('list.txt', 'r') as inputfile:
+        for line in inputfile:
+            URL = line.rstrip('\n') 
+            
+            # Headers for request
+            HEADERS = ({'User-Agent': random_user_agent() })
+            # HTTP Request
+            webpage = requests.get(URL, headers=HEADERS)
+ 
+            # Soup Object containing all data
+            soup = BeautifulSoup(webpage.content, "lxml")
+            newstring = newstring + get_url(soup)+'\n'
+            print("Process", URL)
+            write_file(newstring)
+
+    
+
+    # Function calls to display all necessary product information
+    #print("Product Title =", get_title(soup))
+    #print("Product AllImages =", get_allimages(soup))
+    #print("Product Price =", get_price(soup))
+    #print("Product Rating =", get_rating(soup))
+    #print("Number of Product Reviews =", get_review_count(soup))
+    #print("Availability =", get_availability(soup))
+    #print("Product Description =", get_description(soup))
+    #print("Features =", get_features(soup))
